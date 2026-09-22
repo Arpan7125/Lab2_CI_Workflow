@@ -23,10 +23,18 @@ Lab2_CI_Workflow/
 │   └── calculator.js        # Sample application code
 ├── tests/
 │   └── calculator.test.js   # Jest unit tests
+├── docs/
+│   ├── CI_WORKFLOW.md       # Lab write-up with screenshots
+│   └── screenshots/         # Captured evidence of the CI runs
 ├── .eslintrc.json           # Lint rules
 ├── package.json
 └── README.md
 ```
+
+## Documentation
+
+Full write-up with pipeline design and screenshots of the executed runs:
+[`docs/CI_WORKFLOW.md`](docs/CI_WORKFLOW.md)
 
 ## CI Workflow Design
 

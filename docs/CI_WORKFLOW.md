@@ -171,12 +171,21 @@ pipeline reproduces local behaviour rather than depending on the CI environment.
 
 ![Local lint and test output](screenshots/06-local-verification.png)
 
+### 5.7 A run triggered by the commit that added this document
+
+The header reads **"Triggered via push"** by commit `17d3e1a` on branch
+`claude/ci-workflow-github-actions-…` — proof that the `branches: ["**"]` glob picks up commits on
+branches other than `main`, not just the default branch. Both matrix jobs completed in 18 seconds.
+
+![Run triggered by the documentation commit](screenshots/07-run-triggered-by-docs-commit.png)
+
 ## 6. Results
 
 | Run | Trigger commit | Branch | Event | Node 18.x | Node 20.x | Duration |
 |-----|----------------|--------|-------|-----------|-----------|----------|
 | CI #1 | `394a450` — Lab 2: Add basic CI workflow with GitHub Actions | `main` | push | ✅ success | ✅ success | 22 s |
 | CI #2 | `e205584` — Add REPORT.md documenting Lab 2 CI workflow execution | `main` | push | ✅ success | ✅ success | 15 s |
+| CI #3 | `17d3e1a` — Add docs/CI_WORKFLOW.md with pipeline design and run screenshots | `claude/ci-workflow-github-actions-20312d` | push | ✅ success | ✅ success | 18 s |
 
 Tests executed per job: **5 passed / 5 total**. Lint violations: **0**.
 
@@ -213,9 +222,10 @@ return `a - b`, commit, and push — the `Run tests` step fails and the run is m
 - **`npm install` vs `npm ci`.** `npm install` is used here for simplicity; `npm ci` is stricter
   (it installs exactly what `package-lock.json` pins and fails if the lockfile is out of sync) and
   is the better choice for a real project.
-- **Deprecation notices.** The runs report one warning/notice annotation from transitive npm
-  dependencies of ESLint 8. It does not fail the build, but it is a reminder that pinned tool
-  versions age.
+- **Annotations are warnings, not failures.** Each run reports annotations — `actions/checkout@v4`
+  and `actions/setup-node@v4` target the deprecated Node.js 20 action runtime (GitHub now forces
+  them onto Node.js 24), and the `ubuntu-latest` label is scheduled to migrate to Ubuntu 26. Neither
+  fails the build, but both are a reminder that pinned versions age and floating labels drift.
 
 ## 9. Learning outcomes
 
