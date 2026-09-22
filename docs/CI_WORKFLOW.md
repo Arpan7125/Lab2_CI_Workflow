@@ -1,98 +1,35 @@
-# Lab 2 — Basic CI Workflow Triggered by Commits (GitHub Actions)
+# Lab 2 — CI Workflow Triggered by Commits (GitHub Actions)
 
-**Course:** DevOps Lab · **Repository:** [Arpan7125/Lab2_CI_Workflow](https://github.com/Arpan7125/Lab2_CI_Workflow) · **CI platform:** GitHub Actions
+**Repository:** [Arpan7125/Lab2_CI_Workflow](https://github.com/Arpan7125/Lab2_CI_Workflow) · **CI:** GitHub Actions · **Status:** 3 runs, all passing
 
 ---
 
 ## 1. Objective
 
-Design and implement a basic Continuous Integration pipeline that runs automatically on every
-commit pushed to the repository. The pipeline must fetch the code, set up the runtime, install
-dependencies, check code style, and run the automated test suite — failing loudly if any step
-breaks.
+Build a CI pipeline that runs automatically on every commit pushed to the repository, and that
+lints and tests the code in a clean environment.
 
-## 2. Why GitHub Actions (and not GitLab CI)
+## 2. Project
 
-| Criterion | GitHub Actions | GitLab CI |
-|---|---|---|
-| Hosting of this repo | Already on GitHub | Would need a mirror |
-| Runners | Free hosted `ubuntu-latest` | Free shared runners, but extra setup |
-| Config file | `.github/workflows/ci.yml` | `.gitlab-ci.yml` |
-| Setup effort | Commit one YAML file — nothing to enable | Requires project/runner configuration |
-
-Because the project already lives on GitHub, Actions gives a commit-triggered pipeline with a
-single committed file and zero external configuration. An equivalent `.gitlab-ci.yml` is given in
-Appendix A for comparison.
-
-## 3. Project under test
-
-A small CommonJS calculator module with a Jest test suite — deliberately simple, so the focus stays
-on the pipeline rather than the application.
+A small Node.js calculator module with a Jest test suite — kept simple so the focus is the pipeline.
 
 ```
 Lab2_CI_Workflow/
-├── .github/workflows/ci.yml     # the CI pipeline
-├── .eslintrc.json               # lint rules (eslint:recommended)
-├── package.json                 # npm scripts: "lint", "test"
-├── src/calculator.js            # add, subtract, multiply, divide
-├── tests/calculator.test.js     # 5 Jest test cases
-└── docs/CI_WORKFLOW.md          # this document
+├── .github/workflows/ci.yml   # the CI pipeline
+├── src/calculator.js          # add, subtract, multiply, divide
+├── tests/calculator.test.js   # 5 Jest tests
+├── .eslintrc.json             # lint rules
+└── package.json               # scripts: lint, test
 ```
 
-`divide()` throws on division by zero, and one test asserts that behaviour — so the suite covers a
-happy path and an error path.
+GitHub Actions was chosen because the repo is already on GitHub: committing one YAML file is the
+entire setup, with no runner or project configuration.
 
-## 4. Pipeline design
-
-### 4.1 Trigger
-
-```yaml
-on:
-  push:
-    branches: ["**"]        # every commit, on every branch
-  pull_request:
-    branches: ["main"]      # and every PR aimed at main
-```
-
-`push` with the `"**"` glob is what satisfies the "triggered by commits" requirement: any commit
-pushed to any branch starts a run. The `pull_request` trigger adds a second safety net so that a
-merge into `main` is verified before it lands.
-
-### 4.2 Job and matrix
-
-```yaml
-jobs:
-  build-and-test:
-    name: Build & Test (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-```
-
-One job, executed twice in parallel — once on Node 18 and once on Node 20. This catches
-runtime-version-specific breakage, which is the cheapest useful form of compatibility testing.
-
-### 4.3 Steps
-
-| # | Step | Action / command | Purpose |
-|---|------|------------------|---------|
-| 1 | Checkout repository | `actions/checkout@v4` | Clone the commit that triggered the run |
-| 2 | Set up Node.js | `actions/setup-node@v4` (`cache: npm`) | Install the matrix Node version; cache `~/.npm` |
-| 3 | Install dependencies | `npm install` | Install ESLint and Jest |
-| 4 | Run linter | `npm run lint` | Static analysis — fails the job on any lint error |
-| 5 | Run tests | `npm test` | Execute the Jest suite |
-
-Steps run in order and any non-zero exit code aborts the job and marks the run **failed**, so a
-broken commit is visible on GitHub within seconds.
-
-### 4.4 Full workflow file
+## 3. The workflow
 
 ```yaml
 name: CI
 
-# Trigger the workflow on every commit pushed to any branch,
-# and on every pull request targeting main.
 on:
   push:
     branches: ["**"]
@@ -128,138 +65,98 @@ jobs:
         run: npm test
 ```
 
-## 5. Execution evidence (screenshots)
+**Trigger.** `push` with the `"**"` glob means every commit on every branch starts a run — this is
+the commit trigger the lab asks for. `pull_request` adds a second check before anything merges into
+`main`.
 
-### 5.1 The workflow file committed to the repository
+**Matrix.** The job runs twice in parallel, on Node 18 and Node 20, to catch version-specific
+breakage.
 
-Committing `.github/workflows/ci.yml` is the entire "installation" — GitHub discovers the workflow
-automatically from that path.
+**Steps.**
+
+| # | Step | Command / action | Purpose |
+|---|------|------------------|---------|
+| 1 | Checkout | `actions/checkout@v4` | Clone the triggering commit |
+| 2 | Set up Node | `actions/setup-node@v4` | Install Node; cache `~/.npm` |
+| 3 | Install | `npm install` | Install ESLint and Jest |
+| 4 | Lint | `npm run lint` | Fail on any lint error |
+| 5 | Test | `npm test` | Run the Jest suite |
+
+Any non-zero exit code stops the job and marks the run failed, so a broken commit shows a red ❌ on
+GitHub within seconds.
+
+## 4. Evidence
+
+**The workflow file in the repository** — GitHub picks it up automatically from `.github/workflows/`.
 
 ![Workflow file on GitHub](screenshots/04-workflow-file.png)
 
-### 5.2 Runs triggered by commits
-
-Each row is one run, labelled with the commit that produced it (`CI #2: Commit e205584 pushed by
-Arpan7125`). No run was started manually — every one was triggered by a `git push`.
+**Runs triggered by commits** — each row names the commit that started it. Nothing was run manually.
 
 ![Actions tab showing workflow runs](screenshots/01-actions-runs-list.png)
 
-### 5.3 Run summary — both matrix jobs green
-
-The two matrix jobs (Node 18.x and Node 20.x) ran in parallel and both succeeded.
+**Run summary** — both matrix jobs green.
 
 ![Run summary with matrix jobs](screenshots/02-run-summary-matrix-jobs.png)
 
-### 5.4 Step-by-step job detail
-
-Every step of the Node 18.x job — checkout, Node setup, install, lint, test — completed with a
-green check.
+**Job detail** — every step of the Node 18.x job passed.
 
 ![Job detail showing all steps](screenshots/03-job-steps-node18.png)
 
-### 5.5 CI log output — lint and tests
-
-The actual log of the `Run linter` and `Run tests` steps from the hosted runner: ESLint produced no
-output (no violations) and Jest reported 5 of 5 tests passing.
+**Runner log** — fetched with the GitHub CLI. ESLint reported nothing; Jest passed 5 of 5 tests.
+(The job and step name columns `gh` prints before each timestamp are trimmed here for width.)
 
 ![CI log for lint and test steps](screenshots/05-ci-log-node18.png)
 
-### 5.6 Same commands run locally
-
-Running the identical npm scripts on the development machine gives the same result, confirming the
-pipeline reproduces local behaviour rather than depending on the CI environment.
+**The same commands locally** — identical result, so the pipeline reproduces local behaviour.
 
 ![Local lint and test output](screenshots/06-local-verification.png)
 
-### 5.7 A run triggered by the commit that added this document
-
-The header reads **"Triggered via push"** by commit `17d3e1a` on branch
-`claude/ci-workflow-github-actions-…` — proof that the `branches: ["**"]` glob picks up commits on
-branches other than `main`, not just the default branch. Both matrix jobs completed in 18 seconds.
+**A run triggered by a feature-branch commit** — the header reads "Triggered via push" for commit
+`17d3e1a`, confirming the `"**"` glob covers branches other than `main`.
 
 ![Run triggered by the documentation commit](screenshots/07-run-triggered-by-docs-commit.png)
 
-## 6. Results
+## 5. Results
 
-| Run | Trigger commit | Branch | Event | Node 18.x | Node 20.x | Duration |
-|-----|----------------|--------|-------|-----------|-----------|----------|
-| CI #1 | `394a450` — Lab 2: Add basic CI workflow with GitHub Actions | `main` | push | ✅ success | ✅ success | 22 s |
-| CI #2 | `e205584` — Add REPORT.md documenting Lab 2 CI workflow execution | `main` | push | ✅ success | ✅ success | 15 s |
-| CI #3 | `17d3e1a` — Add docs/CI_WORKFLOW.md with pipeline design and run screenshots | `claude/ci-workflow-github-actions-20312d` | push | ✅ success | ✅ success | 18 s |
+| Run | Commit | Branch | Node 18.x | Node 20.x | Duration |
+|-----|--------|--------|-----------|-----------|----------|
+| CI #1 | `394a450` | `main` | ✅ | ✅ | 22 s |
+| CI #2 | `e205584` | `main` | ✅ | ✅ | 15 s |
+| CI #3 | `17d3e1a` | `claude/ci-workflow-…` | ✅ | ✅ | 18 s |
 
-Tests executed per job: **5 passed / 5 total**. Lint violations: **0**.
+5 of 5 tests passed and 0 lint errors in every job. Every run was started by a push, none manually.
 
-Run #2 finished faster than run #1 because `actions/setup-node`'s npm cache was already warm.
-
-## 7. Reproducing the lab
+## 6. Running it yourself
 
 ```bash
 git clone https://github.com/Arpan7125/Lab2_CI_Workflow.git
 cd Lab2_CI_Workflow
 npm install
-npm run lint && npm test      # same checks the pipeline runs
+npm run lint && npm test
 ```
 
-To see the pipeline fire, make any commit and push it:
+To see the pipeline fire, push any commit and open the **Actions** tab:
 
 ```bash
 git commit --allow-empty -m "Trigger CI"
 git push
 ```
 
-Then open the **Actions** tab of the repository.
+To prove it catches breakage, make `add(a, b)` return `a - b` and push — the `Run tests` step fails
+and the run turns red.
 
-To verify the pipeline actually catches breakage, change `add(a, b)` in `src/calculator.js` to
-return `a - b`, commit, and push — the `Run tests` step fails and the run is marked red.
+## 7. Notes
 
-## 8. Observations
+- A full run takes 15–22 seconds, so feedback is near-immediate.
+- Linting before testing means the cheapest check fails first.
+- The npm cache in `setup-node` cut roughly 30 % off the second run.
+- `npm ci` would be stricter than `npm install` for a real project — it installs exactly what the
+  lockfile pins.
+- The runs carry warning annotations (`checkout@v4`/`setup-node@v4` still target the deprecated
+  Node.js 20 action runtime; `ubuntu-latest` will migrate to Ubuntu 26). They do not fail the build.
 
-- **Feedback is fast.** A full run (two Node versions, install, lint, test) finished in 15–22
-  seconds, so a broken commit is reported almost immediately.
-- **Step ordering matters.** Linting before testing means cheap failures surface first.
-- **Caching helps even at this scale.** `cache: "npm"` in `setup-node` shaved roughly 30 % off the
-  second run.
-- **`npm install` vs `npm ci`.** `npm install` is used here for simplicity; `npm ci` is stricter
-  (it installs exactly what `package-lock.json` pins and fails if the lockfile is out of sync) and
-  is the better choice for a real project.
-- **Annotations are warnings, not failures.** Each run reports annotations — `actions/checkout@v4`
-  and `actions/setup-node@v4` target the deprecated Node.js 20 action runtime (GitHub now forces
-  them onto Node.js 24), and the `ubuntu-latest` label is scheduled to migrate to Ubuntu 26. Neither
-  fails the build, but both are a reminder that pinned versions age and floating labels drift.
+## 8. Conclusion
 
-## 9. Learning outcomes
-
-1. A CI pipeline is just a versioned file in the repository — the pipeline evolves with the code.
-2. Event triggers (`push`, `pull_request`) decide *when* automation runs; a matrix decides *how
-   many ways* it runs.
-3. Exit codes are the contract between a build step and the CI system.
-4. Running the same commands locally and in CI is what makes the pipeline trustworthy.
-
----
-
-## Appendix A — Equivalent GitLab CI configuration
-
-For reference, the same pipeline expressed as `.gitlab-ci.yml`:
-
-```yaml
-stages:
-  - test
-
-.node-template:
-  stage: test
-  script:
-    - npm install
-    - npm run lint
-    - npm test
-
-test:node18:
-  extends: .node-template
-  image: node:18
-
-test:node20:
-  extends: .node-template
-  image: node:20
-```
-
-GitLab CI runs on every pushed commit by default, so no explicit trigger block is needed; the
-equivalent of the Actions matrix is written out as two jobs sharing a template.
+The pipeline lives in the repository as a single YAML file, runs on every commit, and reports pass
+or fail on GitHub — the foundation any larger CI/CD pipeline builds on.
