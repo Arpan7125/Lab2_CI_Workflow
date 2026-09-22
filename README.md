@@ -25,6 +25,7 @@ Lab2_CI_Workflow/
 │   └── calculator.test.js   # Jest unit tests
 ├── docs/
 │   ├── CI_WORKFLOW.md       # Lab write-up with screenshots
+│   ├── CI_WORKFLOW.docx     # Same write-up as a Word document
 │   └── screenshots/         # Captured evidence of the CI runs
 ├── .eslintrc.json           # Lint rules
 ├── package.json
@@ -34,7 +35,8 @@ Lab2_CI_Workflow/
 ## Documentation
 
 Full write-up with pipeline design and screenshots of the executed runs:
-[`docs/CI_WORKFLOW.md`](docs/CI_WORKFLOW.md)
+[`docs/CI_WORKFLOW.md`](docs/CI_WORKFLOW.md) — also available as a Word
+document for submission: [`docs/CI_WORKFLOW.docx`](docs/CI_WORKFLOW.docx)
 
 ## CI Workflow Design
 
